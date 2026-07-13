@@ -1,0 +1,25 @@
+{
+  "name": "linkedin-job-bot",
+  "version": "1.0.0",
+  "description": "Professional LinkedIn Job Bot - Automatically search, analyze, score, and track job opportunities",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "puppeteer": "^24.43.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "allowScripts": {
+    "puppeteer@24.43.1": true,
+    "esbuild@0.28.1": true
+  }
+}
