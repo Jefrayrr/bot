@@ -48,6 +48,46 @@ async function main(): Promise<void> {
     page = await session.initialize();
     console.log('[Pipeline] Session verified.\n');
 
+    const testJobUrl = process.env.TEST_JOB_URL?.trim();
+
+    if (testJobUrl) {
+      // ========== TEST MODE: Direct Application ==========
+      console.log('\n========== TEST MODE: Direct Application ==========\n');
+      console.log(`[Pipeline] Testing with URL: ${testJobUrl}\n`);
+
+      const appProfile = loadApplicationProfile();
+      const knowledgeBase = new KnowledgeBase();
+      await knowledgeBase.initialize();
+      const qa = new QuestionAnswerer(appProfile, knowledgeBase);
+      const appLogger = new ApplicationLogger();
+      await appLogger.initialize();
+      const resumeManager = new ResumeManager(appProfile);
+      const appEngine = new ApplicationEngine(session, appProfile, qa, knowledgeBase, appLogger, resumeManager);
+
+      const testJob: JobDetails = {
+        id: `test_${Date.now()}`,
+        title: 'Test Job',
+        company: 'Test Company',
+        location: 'Test Location',
+        salary: null,
+        easyApply: true,
+        url: testJobUrl,
+        postedDate: null,
+        employmentType: null,
+        workplaceType: null,
+        companySize: null,
+        recruiterName: null,
+        description: '',
+        snippet: '',
+        fetchedAt: new Date().toISOString(),
+      };
+
+      await appEngine.processJobs([testJob]);
+      console.log('\n[Pipeline] Test mode complete.\n');
+
+    } else {
+      // ========== FULL PIPELINE MODE ==========
+
     const searcher = new LinkedInJobSearcher(session);
     const location = process.env.SEARCH_LOCATION || 'Colombia';
     const searchQueries = ['Frontend Developer'];
@@ -257,6 +297,8 @@ async function main(): Promise<void> {
     console.log('\n========================================');
     console.log('  Pipeline completed successfully!');
     console.log('========================================\n');
+
+    } // end else (full pipeline mode)
   } catch (err) {
     console.error('\nFatal error during pipeline execution:', err);
     process.exit(1);

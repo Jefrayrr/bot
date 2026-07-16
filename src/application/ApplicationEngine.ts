@@ -305,7 +305,20 @@ export class ApplicationEngine {
       await sleep(1500 + Math.random() * 1000);
 
       // Check if modal is still open (submission might have completed)
-      const modalOpen = await page.evaluate(() => !!document.querySelector('[role="dialog"]'));
+      const modalOpen = await page.evaluate(() => {
+        if (document.querySelector('[role="dialog"]')) return true;
+        if (document.querySelector('[data-testid="dialog-content"]')) return true;
+        if (document.querySelector('.jobs-easy-apply-modal, [data-easy-apply-modal], .artdeco-modal')) return true;
+        const btns = document.querySelectorAll('button');
+        for (const btn of btns) {
+          if (btn.offsetParent === null) continue;
+          const text = (btn.textContent || '').trim().toLowerCase();
+          if (text.includes('siguiente') || text.includes('next') || text.includes('enviar') || text.includes('submit')) {
+            return true;
+          }
+        }
+        return false;
+      });
       if (!modalOpen) {
         console.log(`    ✓ Modal closed - submission confirmed.`);
         return 'applied';
@@ -395,7 +408,12 @@ export class ApplicationEngine {
       }
 
       // No buttons found — check if modal closed
-      const stillOpen = await page.evaluate(() => !!document.querySelector('[role="dialog"]'));
+      const stillOpen = await page.evaluate(() => {
+        if (document.querySelector('[role="dialog"]')) return true;
+        if (document.querySelector('[data-testid="dialog-content"]')) return true;
+        if (document.querySelector('.jobs-easy-apply-modal, [data-easy-apply-modal], .artdeco-modal')) return true;
+        return false;
+      });
       if (!stillOpen) {
         console.log(`    ✓ Modal closed.`);
         return 'applied';
@@ -465,11 +483,31 @@ export class ApplicationEngine {
   }
 
   private async _waitForModal(page: Page, timeoutMs: number): Promise<boolean> {
+    const selectors = [
+      '[role="dialog"]',
+      '[data-testid="dialog-content"]',
+      '.jobs-easy-apply-modal',
+      '[data-easy-apply-modal]',
+      '.artdeco-modal',
+    ];
     try {
-      await page.waitForSelector('[role="dialog"]', { timeout: timeoutMs });
+      await page.waitForSelector(selectors.join(', '), { timeout: timeoutMs });
       return true;
     } catch {
-      return page.evaluate(() => !!document.querySelector('[role="dialog"]'));
+      return page.evaluate((sels: string[]) => {
+        for (const s of sels) {
+          if (document.querySelector(s)) return true;
+        }
+        const btns = document.querySelectorAll('button');
+        for (const btn of btns) {
+          if (btn.offsetParent === null) continue;
+          const text = (btn.textContent || '').trim().toLowerCase();
+          if (text.includes('siguiente') || text.includes('next') || text.includes('enviar') || text.includes('submit')) {
+            return true;
+          }
+        }
+        return false;
+      }, selectors);
     }
   }
 
