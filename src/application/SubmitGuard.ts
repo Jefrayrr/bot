@@ -49,7 +49,7 @@ export class SubmitGuard {
       requiredFields.forEach((el) => {
         const htmlEl = el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
         const value = htmlEl.value?.trim();
-        if (!value || value === '' || value === htmlEl.getAttribute('data-placeholder') || value === 'Select an option') {
+        if (!value || value === '' || value === htmlEl.getAttribute('data-placeholder') || /select an option|selecciona una|choose|pick|elija|seleccione/i.test(value)) {
           const label = el.closest('[class*="form-group"]')?.querySelector('label')?.textContent?.trim()
             || htmlEl.getAttribute('aria-label')
             || htmlEl.name

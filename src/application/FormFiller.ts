@@ -63,6 +63,11 @@ export class FormFiller {
       return this._selectBestOption(field.options, searchText);
     }
 
+    // For radio buttons, always return a default value to ensure they get filled
+    if (field.type === 'radio') {
+      return 'on';
+    }
+
     return null;
   }
 
@@ -100,6 +105,20 @@ export class FormFiller {
 
   private _selectBestOption(options: string[], searchText: string): string | null {
     const lowerSearch = searchText.toLowerCase();
+
+    // Handle yes/no radio buttons - if options are only yes/no type answers
+    const hasYesNoOptions = options.length <= 4 && options.every(o => /^yes|no|si|sí|not applicable|n\/a$/i.test(o.trim()));
+    if (hasYesNoOptions) {
+      // Default to "Yes" for authorization/visa questions, "No" for others
+      if (/authorized|sponsor|visa|permit|right.*work|legally/i.test(lowerSearch)) {
+        const yesOption = options.find(o => /^yes|si|sí$/i.test(o.trim()));
+        if (yesOption) return yesOption;
+      }
+      // For most other yes/no questions, default to Yes
+      const yesOption = options.find(o => /^yes|si|sí$/i.test(o.trim()));
+      if (yesOption) return yesOption;
+      return options[0];
+    }
 
     const yesInSearch = /yes|si|sí|authorized|sponsor|visa/.test(lowerSearch);
     if (yesInSearch) {
@@ -143,6 +162,11 @@ export class FormFiller {
   }
 
   private async _fillField(page: Page, field: FormField, value: string): Promise<boolean> {
+    // For radio buttons, skip element lookup and go directly to _fillRadio
+    if (field.type === 'radio') {
+      return await this._fillRadio(page, field, value);
+    }
+
     let el = await page.$(field.selector);
 
     if (!el && field.xpath) {
@@ -156,12 +180,112 @@ export class FormFiller {
       const inputType = await el.evaluate((el) => (el as HTMLInputElement).type || '').catch(() => '');
 
       if (tagName === 'select') {
-        await el.select(value);
-        await page.evaluate((sel) => {
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-          sel.dispatchEvent(new Event('input', { bubbles: true }));
-        }, el);
-        return true;
+        // Detect country code selects directly in the browser by checking options for +XX patterns
+        const isPhoneCountryCode = await el.evaluate((sel) => {
+          const s = sel as HTMLSelectElement;
+          // Check if this select has many options with country code patterns like "+57", "+34", etc.
+          let hasCountryCodes = 0;
+          for (let i = 0; i < s.options.length; i++) {
+            const text = String(s.options[i].text || '');
+            const val = String(s.options[i].value || '');
+            if (/\+\d{1,3}/.test(text) || /\+\d{1,3}/.test(val)) {
+              hasCountryCodes++;
+            }
+          }
+          return hasCountryCodes > 5;
+        });
+
+        if (isPhoneCountryCode) {
+          // Check if Colombia is already selected
+          const currentValue = await el.evaluate((sel) => {
+            const s = sel as HTMLSelectElement;
+            return s.options[s.selectedIndex]?.text || '';
+          });
+          
+          if (/colombia|\+57|CO\s*\(|\(CO\)/i.test(currentValue)) {
+            return true; // Colombia already selected
+          }
+          
+          // Find Colombia option index
+          const colombiaIdx = await el.evaluate((sel) => {
+            const s = sel as HTMLSelectElement;
+            for (let i = 0; i < s.options.length; i++) {
+              const txt = String(s.options[i].text || '');
+              const valAttr = String(s.options[i].value || '');
+              if (/colombia|\+57|CO\s*\(|\(CO\)/i.test(txt) || 
+                  /colombia|\+57|CO\s*\(|\(CO\)/i.test(valAttr)) {
+                return i;
+              }
+            }
+            return -1;
+          });
+
+          if (colombiaIdx >= 0) {
+            // Select Colombia using Puppeteer's select
+            const value = await el.evaluate((sel, idx) => {
+              const s = sel as HTMLSelectElement;
+              s.selectedIndex = idx;
+              return s.options[idx].value;
+            }, colombiaIdx);
+
+            // Dispatch events to trigger React state update
+            await el.evaluate((sel) => {
+              const s = sel as HTMLSelectElement;
+              s.dispatchEvent(new Event('change', { bubbles: true }));
+              s.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            
+
+            return true;
+          }
+
+          return true; // If Colombia not found, still skip to avoid selecting wrong country
+        }
+
+        // Check if select already has a valid (non-placeholder) value selected
+        const currentValue = await el.evaluate((sel) => {
+          const s = sel as HTMLSelectElement;
+          return s.options[s.selectedIndex]?.text || '';
+        });
+        const isPlaceholder = !currentValue || /select|selecciona|choose|choose|choose|elija|pick|seleccione/i.test(currentValue);
+        if (!isPlaceholder) {
+          return true; // Already has a valid value, skip
+        }
+
+        // Try direct select first
+        try {
+          await el.select(value);
+          await page.evaluate((sel) => {
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            sel.dispatchEvent(new Event('input', { bubbles: true }));
+          }, el);
+          return true;
+        } catch {
+          // If direct select fails, try to find by text content
+          const found = await el.evaluate((element, _val) => {
+            const s = element as HTMLSelectElement;
+            for (let i = 0; i < s.options.length; i++) {
+              const opt = s.options[i] as unknown as HTMLOptionElement;
+              const txt = String(opt.text || '');
+              const valAttr = String(opt.value || '');
+              if (txt.toLowerCase().includes(String(_val).toLowerCase()) || 
+                  valAttr.toLowerCase().includes(String(_val).toLowerCase())) {
+                s.selectedIndex = i;
+                return true;
+              }
+            }
+            return false;
+          }, value);
+          
+          if (found) {
+            await page.evaluate((sel) => {
+              sel.dispatchEvent(new Event('change', { bubbles: true }));
+              sel.dispatchEvent(new Event('input', { bubbles: true }));
+            }, el);
+            return true;
+          }
+          return false;
+        }
       }
 
       if (tagName === 'textarea') {
@@ -188,6 +312,14 @@ export class FormFiller {
           return true;
         }
         return false;
+      }
+
+      // Check if text/email/tel input already has a valid value
+      if (inputType === 'text' || inputType === 'email' || inputType === 'tel' || tagName === 'input') {
+        const currentVal = await el.evaluate((inp) => (inp as HTMLInputElement).value || '');
+        if (currentVal.trim()) {
+          return true; // Already has a value, skip
+        }
       }
 
       await el.click({ clickCount: 3 });
@@ -228,32 +360,29 @@ export class FormFiller {
 
   private async _fillRadio(page: Page, field: FormField, value: string): Promise<boolean> {
     const groupName = field.groupName || field.name;
-    if (!groupName) return false;
-
-    const selector = `input[type="radio"][name="${CSS.escape(groupName)}"]`;
-    const radios = await page.$$(selector);
-
-    if (radios.length === 0) return false;
-
-    const lowerValue = value.toLowerCase();
-
-    for (const radio of radios) {
-      const labelText = await radio.evaluate((el) => {
-        const parent = el.closest('label');
-        return parent?.textContent?.trim().toLowerCase() || '';
-      });
-
-      const radioValue = await radio.evaluate((el) => (el as HTMLInputElement).value.toLowerCase());
-
-      if (labelText.includes(lowerValue) || radioValue.includes(lowerValue) ||
-          lowerValue.includes(labelText) || lowerValue.includes(radioValue)) {
-        await radio.click();
-        return true;
-      }
+    
+    // Use page.evaluate to find and click radio directly in the browser
+    // This avoids CSS selector issues with obfuscated names
+    if (groupName) {
+      const clicked = await page.evaluate((name) => {
+        const radios = document.querySelectorAll(`input[type="radio"][name="${name}"]`);
+        if (radios.length > 0) {
+          (radios[0] as HTMLInputElement).click();
+          return radios.length;
+        }
+        return 0;
+      }, groupName);
+      
+      if (clicked > 0) return true;
     }
 
-    if (radios.length > 0) {
-      await radios[0].click();
+    // Fallback: try using field selector
+    let el = await page.$(field.selector);
+    if (!el && field.xpath) {
+      el = await this._findByXPath(page, field.xpath);
+    }
+    if (el) {
+      await el.click();
       return true;
     }
 

@@ -34,6 +34,8 @@ export class AnswerStrategy {
         return this._demographicAnswer(label, options);
       case 'portfolio':
         return this._portfolioAnswer(label);
+      case 'phone_country_code':
+        return this._phoneCountryCodeAnswer(options);
       default:
         return null;
     }
@@ -250,5 +252,17 @@ export class AnswerStrategy {
     if (/portfolio|portafolio/.test(labelLower)) return this.profile.portfolio || null;
 
     return this.profile.portfolio || this.profile.github || null;
+  }
+
+  private _phoneCountryCodeAnswer(options: string[]): string | null {
+    if (options.length > 0) {
+      const colombiaOption = options.find(o => /colombia|\+57|CO\s*\(|\(CO\)/i.test(o));
+      if (colombiaOption) return colombiaOption;
+
+      const coOption = options.find(o => /^CO$/i.test(o) || o.includes('CO'));
+      if (coOption) return coOption;
+    }
+
+    return 'Colombia';
   }
 }

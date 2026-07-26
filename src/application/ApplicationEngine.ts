@@ -127,14 +127,29 @@ export class ApplicationEngine {
     const maxFormPages = parseInt(process.env.MAX_FORM_PAGES || '5', 10);
 
     try {
+      // === STEP 0: Reset page state to avoid rate-limit ===
+      console.log(`  → Resetting page state...`);
+      try {
+        await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        console.log(`  → Feed loaded, URL: ${page.url()}`);
+        await sleep(3000 + Math.random() * 2000);
+      } catch (e: any) {
+        console.log(`  → Feed reset failed: ${e.message}`);
+      }
+
       // === STEP 1: Open job page ===
       console.log(`  → Opening job page...`);
-      await page.goto(job.url, { waitUntil: 'networkidle2', timeout: 60000 });
+      try {
+        await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      } catch (e: any) {
+        console.log(`  → Navigation failed (${e.message}), trying reload...`);
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+      }
       console.log(`  → URL: ${page.url()}`);
 
       // Wait for job details panel to load
       try {
-        await page.waitForSelector('.jobs-details, .jobs-details__, main', { timeout: 15000 });
+        await page.waitForSelector('.jobs-details, .jobs-details__, main, .jobs-search__job-details', { timeout: 20000 });
       } catch {}
       await sleep(3000 + Math.random() * 2000);
 
@@ -253,20 +268,24 @@ export class ApplicationEngine {
 
   private async _detectTotalPages(page: Page): Promise<number> {
     return page.evaluate(() => {
-      const dialog = document.querySelector('[role="dialog"]');
+      const dialog = document.querySelector('[role="dialog"]')
+        || document.querySelector('[data-testid="dialog-content"]')
+        || document.querySelector('.jobs-easy-apply-modal')
+        || document.querySelector('[data-easy-apply-modal]')
+        || document.querySelector('.artdeco-modal');
       if (!dialog) return 1;
 
       const text = dialog.textContent || '';
 
-      // "1/4", "Step 1/3", "Paso 1/4", "Page 1/4"
-      const slashPatterns = [
-        /(\d+)\s*\/\s*(\d+)/,
+      // Specific patterns with context keywords FIRST
+      const contextPatterns = [
+        /(\d+)\s*\/\s*(\d+)\s*(?:páginas|pages|pasos|steps)/i,
         /step\s*(\d+)\s*\/\s*(\d+)/i,
         /paso\s*(\d+)\s*\/\s*(\d+)/i,
         /page\s*(\d+)\s*\/\s*(\d+)/i,
         /página\s*(\d+)\s*\/\s*(\d+)/i,
       ];
-      for (const p of slashPatterns) {
+      for (const p of contextPatterns) {
         const m = text.match(p);
         if (m) return parseInt(m[2], 10);
       }
@@ -283,12 +302,6 @@ export class ApplicationEngine {
         const m = text.match(p);
         if (m) return parseInt(m[2], 10);
       }
-
-      // Fallback: count progress indicators
-      const steps = dialog.querySelectorAll(
-        '[aria-label*="Step"], [class*="progress"] li, [class*="steps"] li, ol li'
-      );
-      if (steps.length > 1) return steps.length;
 
       return 1;
     });

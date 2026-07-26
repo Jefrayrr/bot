@@ -234,7 +234,7 @@ async function main(): Promise<void> {
       const appEngine = new ApplicationEngine(session, appProfile, qa, knowledgeBase, appLogger, resumeManager);
 
       const autoApplyJobs = scoredResults
-        .filter(r => r.job.easyApply && (r.score.grade === 'A' || r.score.grade === 'B'))
+        .filter(r => r.job.easyApply && (r.score.grade === 'A' || r.score.grade === 'B' || r.score.grade === 'C'))
         .map(r => r.job);
 
       const maxApplyLimit = parseInt(process.env.MAX_APPLY_LIMIT || '0', 10);

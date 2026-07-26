@@ -2,10 +2,11 @@ import { ApplicationProfile } from './ApplicationProfile.js';
 import { QuestionClassifier, QuestionCategory, ClassificationResult } from './QuestionClassifier.js';
 import { AnswerStrategy } from './AnswerStrategy.js';
 import { KnowledgeBase } from './KnowledgeBase.js';
+import { GeminiAnswerer } from './GeminiAnswerer.js';
 
 export interface AnswerResult {
   answer: string | null;
-  method: 'strategy' | 'knowledge_base' | 'unknown';
+  method: 'strategy' | 'knowledge_base' | 'gemini' | 'unknown';
   category: QuestionCategory;
   confidence: number;
 }
@@ -14,11 +15,13 @@ export class QuestionAnswerer {
   private classifier: QuestionClassifier;
   private strategy: AnswerStrategy;
   private knowledgeBase: KnowledgeBase;
+  private gemini: GeminiAnswerer;
 
   constructor(profile: ApplicationProfile, knowledgeBase: KnowledgeBase) {
     this.classifier = new QuestionClassifier();
     this.strategy = new AnswerStrategy(profile);
     this.knowledgeBase = knowledgeBase;
+    this.gemini = new GeminiAnswerer(profile);
   }
 
   async findAnswer(
@@ -53,6 +56,19 @@ export class QuestionAnswerer {
         category: kbEntry.category,
         confidence: 90,
       };
+    }
+
+    // Use Gemini for text/string type questions
+    if (this.gemini.isAvailable() && (fType === 'text' || fType === 'textarea') && !label.includes('email') && !label.includes('phone')) {
+      const geminiAnswer = await this.gemini.answerTextQuestion(label, placeholder);
+      if (geminiAnswer) {
+        return {
+          answer: geminiAnswer,
+          method: 'gemini',
+          category: classification.category,
+          confidence: 80,
+        };
+      }
     }
 
     await this.knowledgeBase.markForLearning(searchText, classification.category);

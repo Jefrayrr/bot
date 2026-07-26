@@ -157,16 +157,88 @@ function analyzeFormInBrowser() {
       return Object.assign({}, base, { type: 'file', label: label || 'CV Upload', selector: buildSelector(input), xpath: buildXPath(input), options: [], helpText: extractHelpText(input) });
     }
     if (inputType === 'radio') {
-      var radioGroup = root.querySelectorAll('input[type="radio"][name="' + input.name + '"]');
+      // Try to find radio group by name first
+      var radioGroup = input.name ? root.querySelectorAll('input[type="radio"][name="' + input.name + '"]') : [];
+      
+      // If no name or no radios found by name, find all radios in the same container
+      if (radioGroup.length === 0) {
+        var container = input.closest('[class*="form-group"], [class*="form-section"], .fb-form-element, fieldset, [role="radiogroup"]') || input.parentElement;
+        if (container) {
+          radioGroup = container.querySelectorAll('input[type="radio"]');
+        }
+        // If still no radios, try to find by data-field or aria attributes
+        if (radioGroup.length === 0) {
+          var fieldId = input.getAttribute('data-field') || input.getAttribute('aria-labelledby') || '';
+          if (fieldId) {
+            radioGroup = root.querySelectorAll('input[type="radio"][data-field="' + fieldId + '"], input[type="radio"][aria-labelledby="' + fieldId + '"]');
+          }
+        }
+      }
+      
       var opts = [];
       var seen = {};
       for (var i = 0; i < radioGroup.length; i++) {
         var r = radioGroup[i];
-        var parentLabel = r.closest('label') || (r.closest('[class*="form-group"]') ? r.closest('[class*="form-group"]').querySelector('label') : null);
-        var optText = (parentLabel && parentLabel.textContent ? parentLabel.textContent.trim() : '') || (r.nextSibling && r.nextSibling.textContent ? r.nextSibling.textContent.trim() : '') || r.value || '';
+        // Try multiple ways to get the label text
+        var optText = '';
+        // 1. Try closest label
+        var parentLabel = r.closest('label');
+        if (parentLabel && parentLabel.textContent) optText = parentLabel.textContent.trim();
+        // 2. Try sibling elements (span, div, etc.)
+        if (!optText) {
+          var prevSib = r.previousElementSibling;
+          var nextSib = r.nextElementSibling;
+          if (prevSib && prevSib.textContent) optText = prevSib.textContent.trim();
+          if (!optText && nextSib && nextSib.textContent) optText = nextSib.textContent.trim();
+        }
+        // 3. Try sibling text node
+        if (!optText && r.nextSibling && r.nextSibling.textContent) optText = r.nextSibling.textContent.trim();
+        // 4. Walk up parents looking for visible text (up to 5 levels)
+        if (!optText) {
+          var cur = r.parentElement;
+          for (var lvl = 0; lvl < 5 && cur; lvl++) {
+            // Get text from siblings of the current level
+            var prev = cur.previousElementSibling;
+            var next = cur.nextElementSibling;
+            if (prev && prev.textContent && prev.textContent.trim().length < 100 && prev.textContent.trim().length > 0) {
+              optText = prev.textContent.trim();
+              break;
+            }
+            if (next && next.textContent && next.textContent.trim().length < 100 && next.textContent.trim().length > 0) {
+              optText = next.textContent.trim();
+              break;
+            }
+            // Also try text nodes
+            if (cur.previousSibling && cur.previousSibling.nodeType === 3 && cur.previousSibling.textContent.trim()) {
+              optText = cur.previousSibling.textContent.trim();
+              break;
+            }
+            cur = cur.parentElement;
+          }
+        }
+        // 5. Try aria-label
+        if (!optText) {
+          var ariaLabel = r.getAttribute('aria-label');
+          if (ariaLabel) optText = ariaLabel.trim();
+        }
+        // 6. Try aria-labelledby
+        if (!optText) {
+          var labelledby = r.getAttribute('aria-labelledby');
+          if (labelledby) {
+            var labelEl = document.getElementById(labelledby);
+            if (labelEl && labelEl.textContent) optText = labelEl.textContent.trim();
+          }
+        }
+        // 7. Try data-value or value attribute
+        if (!optText) optText = r.getAttribute('data-value') || r.value || '';
+        
         if (optText && !seen[optText]) { seen[optText] = true; opts.push(optText); }
       }
-      return Object.assign({}, base, { type: 'radio', selector: buildSelector(input), xpath: buildXPath(input), options: opts, groupName: input.name || '', helpText: extractHelpText(input) });
+      
+      // Generate a unique group identifier for radios without name
+      var groupName = input.name || input.id || ('radio_group_' + opts.join('_'));
+      
+      return Object.assign({}, base, { type: 'radio', selector: buildSelector(input), xpath: buildXPath(input), options: opts, groupName: groupName, helpText: extractHelpText(input) });
     }
     if (inputType === 'checkbox') {
       var cbLabel = (input.closest('label') && input.closest('label').textContent ? input.closest('label').textContent.trim() : '') || label || '';
@@ -226,6 +298,13 @@ function analyzeFormInBrowser() {
 
       if (input) {
         processedElements.add(input);
+        // For radio buttons, also mark all radios in the same group as processed
+        if (input.type === 'radio' && input.name) {
+          var sameGroup = root.querySelectorAll('input[type="radio"][name="' + input.name + '"]');
+          for (var rgi = 0; rgi < sameGroup.length; rgi++) {
+            processedElements.add(sameGroup[rgi]);
+          }
+        }
         var field = buildFormField(input, extractedLabel, placeholder, root);
         if (field.type === 'file') hasFileUpload = true;
         fields.push(field);
@@ -236,7 +315,10 @@ function analyzeFormInBrowser() {
         for (var oi = 0; oi < sOpts.length; oi++) {
           if (!sOpts[oi].disabled && sOpts[oi].value !== '') {
             var t = sOpts[oi].textContent ? sOpts[oi].textContent.trim() : '';
-            if (t) opts.push(t);
+            // Filter out placeholder options
+            if (t && !/select an option|selecciona una|choose|pick|elija|seleccione|choose an/i.test(t)) {
+              opts.push(t);
+            }
           }
         }
         fields.push({ type: 'select', label: extractedLabel, placeholder: '', required: select.required || select.hasAttribute('aria-required'), name: select.name || select.id || '', selector: buildSelector(select), xpath: buildXPath(select), options: opts, groupName: '', autocomplete: select.getAttribute('autocomplete') || null, role: select.getAttribute('role') || null, helpText: extractHelpText(select, groupEl) });
@@ -267,7 +349,10 @@ function analyzeFormInBrowser() {
     for (var oi = 0; oi < sOpts.length; oi++) {
       if (!sOpts[oi].disabled && sOpts[oi].value !== '') {
         var t = sOpts[oi].textContent ? sOpts[oi].textContent.trim() : '';
-        if (t) opts.push(t);
+        // Filter out placeholder options
+        if (t && !/select an option|selecciona una|choose|pick|elija|seleccione|choose an/i.test(t)) {
+          opts.push(t);
+        }
       }
     }
     fields.push({ type: 'select', label: extractLabelStandalone(select), placeholder: '', required: select.required || select.hasAttribute('aria-required'), name: select.name || select.id || '', selector: buildSelector(select), xpath: buildXPath(select), options: opts, groupName: '', autocomplete: select.getAttribute('autocomplete') || null, role: select.getAttribute('role') || null, helpText: extractHelpText(select) });
@@ -318,26 +403,30 @@ function analyzeFormInBrowser() {
     }
   }
 
+  // Scan buttons inside root (form content area)
   for (var bi = 0; bi < buttons.length; bi++) { checkButton(buttons[bi]); }
 
+  // Scan footer inside root
   var footer = root.querySelector('.artdeco-modal__actionbar, [class*="modal__actionbar"], [class*="footer"]');
   if (footer) {
     var footerBtns = footer.querySelectorAll('button');
     for (var fi = 0; fi < footerBtns.length; fi++) { checkButton(footerBtns[fi]); }
   }
 
-  // Also check document-level action buttons (modal footer often outside root)
-  if (!nextBtn || !submitBtn) {
-    var docFooter = document.querySelector('.artdeco-modal__actionbar, [class*="modal__actionbar"], [class*="footer"]');
-    if (docFooter) {
-      var docFooterBtns = docFooter.querySelectorAll('button');
-      for (var di = 0; di < docFooterBtns.length; di++) { checkButton(docFooterBtns[di]); }
+  // Also scan the FULL modal overlay (root's parent) for buttons like "Enviar solicitud"
+  // that live in the modal footer OUTSIDE the content area
+  if (!submitBtn || !nextBtn) {
+    var modalOverlay = root.closest('.artdeco-modal, [role="dialog"]');
+    if (modalOverlay) {
+      var modalBtns = modalOverlay.querySelectorAll('button');
+      for (var mi = 0; mi < modalBtns.length; mi++) { checkButton(modalBtns[mi]); }
     }
-    // Also scan ALL visible buttons as last resort
-    if (!nextBtn && !submitBtn && !reviewBtn) {
-      var allBtns = document.querySelectorAll('button');
-      for (var ai = 0; ai < allBtns.length; ai++) { checkButton(allBtns[ai]); }
-    }
+  }
+
+  // Last resort: scan ALL visible buttons in the document
+  if (!nextBtn && !submitBtn && !reviewBtn) {
+    var allBtns = document.querySelectorAll('button');
+    for (var ai = 0; ai < allBtns.length; ai++) { checkButton(allBtns[ai]); }
   }
 
   // Positional fallback: if no buttons found by text, find the primary action button

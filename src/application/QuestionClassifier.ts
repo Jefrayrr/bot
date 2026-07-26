@@ -9,6 +9,7 @@ export type QuestionCategory =
   | 'personal_info'
   | 'demographic'
   | 'portfolio'
+  | 'phone_country_code'
   | 'unknown';
 
 export interface ClassificationResult {
@@ -277,6 +278,29 @@ const SCORING_RULES: ScoringRule[] = [
     ],
     label: 'portfolio',
   },
+  {
+    category: 'phone_country_code',
+    strong: [
+      /country\s*code/i,
+      /c[oó]digo\s*del\s*pa[ií]s/i,
+      /phone\s*code/i,
+      /c[oó]digo\s*tel[eé]fonico/i,
+      /calling\s*code/i,
+      /c[oó]digo\s*de\s*llamada/i,
+    ],
+    weak: [
+      /phone.*country/i,
+      /country.*phone/i,
+      /tel[eé]fono.*pa[ií]s/i,
+      /pa[ií]s.*tel[eé]fono/i,
+    ],
+    contextCheck: (options, fieldType) => {
+      if (fieldType === 'select' && options.length > 10 && options.some(o => /\+\d{1,3}/.test(o))) return 50;
+      if (fieldType === 'select' && options.some(o => /colombia|\+57|CO\s*\(|\(CO\)/i.test(o))) return 40;
+      return 0;
+    },
+    label: 'phone_country_code',
+  },
 ];
 
 export class QuestionClassifier {
@@ -369,5 +393,12 @@ export class QuestionClassifier {
 
   getCategories(): QuestionCategory[] {
     return SCORING_RULES.map(r => r.category);
+  }
+
+  isPhoneCountryCode(fieldLabel: string, options: string[]): boolean {
+    const searchText = fieldLabel.toLowerCase();
+    const isCountryCode = /country\s*code|c[oó]digo\s*del\s*pa[ií]s/i.test(searchText);
+    const hasPhoneOptions = options.some(o => /\+\d+/.test(o));
+    return isCountryCode && hasPhoneOptions;
   }
 }
