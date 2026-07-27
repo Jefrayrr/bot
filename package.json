@@ -5,9 +5,10 @@
   "type": "module",
   "main": "src/main.ts",
   "scripts": {
-    "start": "tsx src/main.ts",
+    "start": "node dist/main.js",
     "dev": "tsx watch src/main.ts",
-    "api": "tsx src/api/server.ts",
+    "api": "node dist/api/server.js",
+    "build": "tsc",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
