@@ -13,6 +13,13 @@ import { ApplicationLogger, ApplicationResult } from './ApplicationLogger.js';
 import { ApplicationProfile } from './ApplicationProfile.js';
 import { KnowledgeBase } from './KnowledgeBase.js';
 import { ApplicationStateManager } from './ApplicationState.js';
+import {
+  emitApplicationStart,
+  emitApplicationComplete,
+  emitFormStep,
+  emitFieldFilled,
+  emitError,
+} from '../mirror/index.js';
 
 const SCREENSHOT_DIR = path.resolve('screenshots');
 
@@ -102,6 +109,8 @@ export class ApplicationEngine {
         skipped++;
       }
 
+      emitApplicationComplete(job.id, result);
+
       if (i < jobs.length - 1) {
         const delay = 5000 + Math.random() * 10000;
         console.log(`  [AppEngine] Waiting ${Math.round(delay / 1000)}s before next job...`);
@@ -125,6 +134,8 @@ export class ApplicationEngine {
     const page = await this.session.getPage();
     const safeId = (job.id || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '_');
     const maxFormPages = parseInt(process.env.MAX_FORM_PAGES || '5', 10);
+
+    emitApplicationStart(job.id);
 
     try {
       // === STEP 0: Reset page state to avoid rate-limit ===
@@ -227,6 +238,7 @@ export class ApplicationEngine {
       // === STEP 4: Detect total steps from "1/4", "Step 1 of 3", etc ===
       const totalPages = await this._detectTotalPages(page);
       console.log(`  → Solicitud de ${totalPages} paso(s)`);
+      emitFormStep(1, totalPages);
 
       if (totalPages > maxFormPages) {
         console.log(`  → Form too long: ${totalPages} pages (max: ${maxFormPages}). Skipping.`);
@@ -257,6 +269,7 @@ export class ApplicationEngine {
       return success ? 'applied' : 'need_review';
     } catch (err: any) {
       console.error(`  [AppEngine] Error: ${err.message}`);
+      emitError(`Application error: ${err.message}`);
       await this._saveScreenshot(page, safeId, 'error');
       await this.logger.log({
         jobId: job.id, company: job.company, title: job.title, url: job.url,
@@ -353,6 +366,8 @@ export class ApplicationEngine {
           console.log(`      - ${field.type}: "${field.label}"${field.required ? ' *' : ''}`);
         }
 
+        emitFormStep(step, totalPages);
+
         // Handle file upload
         if (analysis.hasFileUpload) {
           const resumePath = this.resumeManager.getResumeForJob(job.title);
@@ -370,6 +385,9 @@ export class ApplicationEngine {
 
         const fillResult = await this.filler.fillFields(page, analysis.fields);
         console.log(`    Filled: ${fillResult.filled}, Skipped: ${fillResult.skipped}`);
+        for (const field of analysis.fields) {
+          emitFieldFilled(field.label || field.name || 'unknown', field.placeholder || '');
+        }
         await sleep(500 + Math.random() * 500);
       }
 

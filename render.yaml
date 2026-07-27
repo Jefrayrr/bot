@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: linkedin-bot-api
+    runtime: node
+    buildCommand: npm install
+    startCommand: npx tsx src/api/server.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: API_PORT
+        value: 3002
+      - key: WS_PORT
+        value: 3001
+      - key: PUPPETEER_HEADLESS
+        value: "true"
+
+  - type: worker
+    name: linkedin-bot-worker
+    runtime: node
+    buildCommand: npm install
+    startCommand: npx tsx src/main.ts
+    envVars:
+      - key: PUPPETEER_HEADLESS
+        value: "true"
+      - key: API_PORT
+        value: 3002
+      - key: WS_PORT
+        value: 3001
+
+  - type: web
+    name: linkedin-dashboard
+    runtime: docker
+    dockerfilePath: ./Dockerfile.php
+    envVars:
+      - key: NODE_API_URL
+        fromService:
+          name: linkedin-bot-api
+          property: host
+      - key: NODE_WS_URL
+        value: "wss://linkedin-bot-api.onrender.com"

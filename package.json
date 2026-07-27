@@ -7,15 +7,18 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
+    "api": "tsx src/api/server.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "dotenv": "^16.4.7",
-    "puppeteer": "^24.43.1"
+    "puppeteer": "^24.43.1",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },

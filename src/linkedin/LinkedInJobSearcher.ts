@@ -5,6 +5,7 @@ import { LinkedInSession } from './LinkedInSession.js';
 import { PaginationManager } from './PaginationManager.js';
 import { JobExtractor, JobDetails } from './JobExtractor.js';
 import { setTimeout as sleep } from 'timers/promises';
+import { emitJobFound, emitJobEnriched } from '../mirror/index.js';
 
 export interface SearchQuery {
   keywords: string;
@@ -214,6 +215,7 @@ export class LinkedInJobSearcher {
       const progress = `${i + 1}/${jobs.length}`;
 
       console.log(`[${progress}] Enriching: ${job.title} @ ${job.company}`);
+      emitJobFound(job.id, job.title, job.company);
 
       // Record current panel length to detect content change
       const prevLen = await page.evaluate(() => {
@@ -428,6 +430,7 @@ export class LinkedInJobSearcher {
         console.log(
           `[${progress}] Enriched: ${job.title} (desc=${enriched.description.length} chars)`
         );
+        emitJobEnriched(job.id, job.title);
       }
 
       // Small delay between cards to avoid rate-limiting

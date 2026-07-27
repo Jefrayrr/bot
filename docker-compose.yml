@@ -1,0 +1,46 @@
+services:
+  node:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    volumes:
+      - ./data:/app/data
+      - ./cookies:/app/cookies
+      - ./reports:/app/reports
+    env_file:
+      - .env
+    environment:
+      - API_PORT=3002
+      - WS_PORT=3001
+      - DATA_DIR=/app/data
+      - COOKIES_DIR=/app/cookies
+      - REPORTS_DIR=/app/reports
+      - PUPPETEER_HEADLESS=true
+    cap_add:
+      - SYS_ADMIN
+    shm_size: '2gb'
+    networks:
+      - bot-network
+
+  php:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/var/www/html
+    environment:
+      - NODE_API_URL=http://node:3002
+      - NODE_WS_URL=ws://node:3001
+    depends_on:
+      - node
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

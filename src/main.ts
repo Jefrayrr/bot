@@ -16,6 +16,13 @@ import { KnowledgeBase } from './application/KnowledgeBase.js';
 import { ApplicationLogger } from './application/ApplicationLogger.js';
 import { ResumeManager } from './application/ResumeManager.js';
 import { ApplicationEngine } from './application/ApplicationEngine.js';
+import {
+  initMirror,
+  emitPipelineStart,
+  emitPipelineStage,
+  emitScoringComplete,
+  emitError,
+} from './mirror/index.js';
 
 async function main(): Promise<void> {
   console.log('========================================');
@@ -46,6 +53,8 @@ async function main(): Promise<void> {
     // ========== STAGE 0: Verify LinkedIn Session ==========
     console.log('========== Stage 0: Verify LinkedIn Session ==========\n');
     page = await session.initialize();
+    initMirror(page);
+    emitPipelineStage('Session verified');
     console.log('[Pipeline] Session verified.\n');
 
     const testJobUrl = process.env.TEST_JOB_URL?.trim();
@@ -99,6 +108,7 @@ async function main(): Promise<void> {
     // ========== STAGE 1: Search Execution ==========
     console.log('========== Stage 1: Search Execution ==========\n');
     const rawResults: SearchResult[] = [];
+    emitPipelineStart(searchQueries[0], searchQueries.length);
 
     for (const query of searchQueries) {
       console.log(`\n>>> Search: "${query}" <<<\n`);
@@ -150,6 +160,8 @@ async function main(): Promise<void> {
         console.log(`Scoring: ${job.title} @ ${job.company}`);
         const score = scorer.scoreJob(job);
         scoredResults.push({ job, score });
+
+        emitScoringComplete(job.id, score.score, score.grade, score.passedStage1, score.reasons);
 
         const icon =
           score.grade === 'A' ? '⭐' : score.grade === 'B' ? '👍' : score.grade === 'C' ? '📄' : '❌';
@@ -261,6 +273,7 @@ async function main(): Promise<void> {
 
     // ========== STAGE 8: Save Results ==========
     console.log('========== Stage 8: Save Results ==========\n');
+    emitPipelineStage('Saving results');
     await storage.save();
     console.log('[Pipeline] Results saved.\n');
 
@@ -301,6 +314,7 @@ async function main(): Promise<void> {
     } // end else (full pipeline mode)
   } catch (err) {
     console.error('\nFatal error during pipeline execution:', err);
+    emitError(err instanceof Error ? err.message : String(err));
     process.exit(1);
   } finally {
     await session.close();

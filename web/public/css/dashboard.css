@@ -1,0 +1,58 @@
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d1117;--surface:#161b22;--border:#30363d;--text:#c9d1d9;--text-dim:#8b949e;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--orange:#db6d28;--purple:#bc8cff}
+body{background:var(--bg);color:var(--text);font-family:'SF Mono',Consolas,'Liberation Mono',Menlo,monospace;font-size:13px;line-height:1.5}
+.dashboard{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);min-height:100vh}
+.panel{background:var(--surface);padding:12px;overflow-y:auto}
+.panel-header{color:var(--accent);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.state-value{display:flex;justify-content:space-between;padding:3px 0}
+.state-value .label{color:var(--text-dim)}
+.state-value .value{color:var(--text);font-weight:500}
+.state-value .value.running{color:var(--green)}
+.state-value .value.error{color:var(--red)}
+.state-value .value.idle{color:var(--yellow)}
+.state-value .value.searching{color:var(--accent)}
+.state-value .value.applying{color:var(--purple)}
+.job-card{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-bottom:8px}
+.job-title{color:var(--accent);font-size:14px;font-weight:600;margin-bottom:4px}
+.job-company{color:var(--text-dim);margin-bottom:6px}
+.job-score{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;font-size:12px;margin-right:4px}
+.job-score.A{background:rgba(63,185,80,0.2);color:var(--green)}
+.job-score.B{background:rgba(88,166,255,0.2);color:var(--accent)}
+.job-score.C{background:rgba(210,153,34,0.2);color:var(--yellow)}
+.job-score.D,.job-score.F{background:rgba(248,81,73,0.2);color:var(--red)}
+.skills{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.skill{padding:2px 6px;border-radius:4px;font-size:11px}
+.skill.matched{background:rgba(63,185,80,0.15);color:var(--green);border:1px solid rgba(63,185,80,0.3)}
+.skill.unmatched{background:rgba(139,148,158,0.1);color:var(--text-dim);border:1px solid var(--border)}
+.form-field{display:flex;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
+.form-field:last-child{border-bottom:none}
+.form-field .type{color:var(--purple);width:60px;font-size:11px}
+.form-field .name{color:var(--text);flex:1}
+.form-field .value{color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.form-field .filled{color:var(--green);margin-left:6px}
+.form-field .empty{color:var(--red);margin-left:6px}
+.decision-step{display:flex;align-items:center;padding:4px 0}
+.decision-step .arrow{color:var(--text-dim);margin:0 8px}
+.decision-step .label{color:var(--text-dim);width:140px}
+.decision-step .val{color:var(--text);font-weight:500}
+.decision-step .status{margin-left:auto;font-size:11px}
+.decision-step .status.pass{color:var(--green)}
+.decision-step .status.fail{color:var(--red)}
+.timeline-entry{display:flex;gap:8px;padding:3px 0;font-size:12px}
+.timeline-entry .time{color:var(--text-dim);white-space:nowrap;min-width:70px}
+.timeline-entry .type{color:var(--accent);min-width:100px}
+.timeline-entry .msg{color:var(--text)}
+.dom-tree{font-size:11px}
+.dom-node{padding-left:16px;border-left:1px solid var(--border);margin-left:4px}
+.dom-node.interactive{color:var(--accent)}
+.dom-tag{color:var(--purple)}
+.dom-text{color:var(--text-dim);font-style:italic;margin-left:4px}
+.btn{padding:4px 12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.controls{position:fixed;top:8px;right:8px;display:flex;gap:4px;z-index:100}
+.empty-state{color:var(--text-dim);text-align:center;padding:20px;font-style:italic}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.status-dot.running{background:var(--green);animation:pulse 2s infinite}
+.status-dot.idle{background:var(--yellow)}
+.status-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
