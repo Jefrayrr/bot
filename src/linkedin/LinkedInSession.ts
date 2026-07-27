@@ -16,8 +16,7 @@ export class LinkedInSession {
     const viewportWidth = parseInt(process.env.PUPPETEER_VIEWPORT_WIDTH || '1366', 10);
     const viewportHeight = parseInt(process.env.PUPPETEER_VIEWPORT_HEIGHT || '768', 10);
 
-    this.browser = await puppeteer.launch({
-      executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    const launchOptions = {
       headless,
       slowMo,
       protocolTimeout: 120000,
@@ -28,7 +27,14 @@ export class LinkedInSession {
         '--window-size=1366,768',
         '--disable-blink-features=AutomationControlled',
       ],
-    });
+    };
+
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    if (executablePath) {
+      (launchOptions as any).executablePath = executablePath;
+    }
+
+    this.browser = await puppeteer.launch(launchOptions);
 
     this.page = await this.browser.newPage();
     await this.page.setDefaultNavigationTimeout(60000);
