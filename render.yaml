@@ -42,6 +42,7 @@ services:
       - key: NODE_API_URL
         fromService:
           name: linkedin-bot-api
+          type: web
           property: host
       - key: NODE_WS_URL
         value: "wss://linkedin-bot-api.onrender.com"
