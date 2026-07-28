@@ -1,0 +1,17 @@
+node_modules
+dist
+data
+reports
+cookies
+screenshots
+debug
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+render.yaml
+Dockerfile.*
+docker-compose*
+README.md

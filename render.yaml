@@ -16,9 +16,8 @@ services:
 
   - type: web
     name: linkedin-bot-worker
-    runtime: node
-    buildCommand: apt-get update && apt-get install -y chromium libnss3 libatk-bridge2.0-0 libxkbcommon0 libgbm1 libasound2 && npm install && npm run build
-    startCommand: node dist/main.js
+    runtime: docker
+    dockerfilePath: ./Dockerfile.node
     envVars:
       - key: PUPPETEER_HEADLESS
         value: "true"
