@@ -14,18 +14,26 @@ services:
       - key: PUPPETEER_HEADLESS
         value: "true"
 
-  - type: worker
+  - type: web
     name: linkedin-bot-worker
     runtime: node
-    buildCommand: npm install
-    startCommand: npx tsx src/main.ts
+    buildCommand: apt-get update && apt-get install -y chromium libnss3 libatk-bridge2.0-0 libxkbcommon0 libgbm1 libasound2 && npm install && npm run build
+    startCommand: node dist/main.js
     envVars:
       - key: PUPPETEER_HEADLESS
         value: "true"
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
+      - key: NODE_ENV
+        value: production
       - key: API_PORT
         value: 3002
       - key: WS_PORT
         value: 3001
+      - key: WEB_CONCURRENCY
+        value: "1"
 
   - type: web
     name: linkedin-dashboard

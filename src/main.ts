@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { createServer } from 'http';
 import { LinkedInSession } from './linkedin/LinkedInSession.js';
 import { LinkedInJobSearcher, SearchResult, SearchFilters } from './linkedin/LinkedInJobSearcher.js';
 import { JobDetails } from './linkedin/JobExtractor.js';
@@ -24,7 +25,25 @@ import {
   emitError,
 } from './mirror/index.js';
 
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '3002', 10);
+
+function startHealthCheckServer(): void {
+  const server = createServer((req, res) => {
+    if (req.url === '/' || req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', service: 'linkedin-bot-worker' }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  });
+  server.listen(PORT, () => {
+    console.log(`[HealthCheck] Server listening on port ${PORT}`);
+  });
+}
+
 async function main(): Promise<void> {
+  startHealthCheckServer();
   console.log('========================================');
   console.log('  LinkedIn Job Bot v2.0');
   console.log('  Multi-Stage Search Pipeline');
