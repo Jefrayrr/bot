@@ -85,10 +85,21 @@ export class LinkedInJobSearcher {
       console.log(`\n--- Page ${pageNum + 1} (start=${start}) ---`);
       console.log(`[Searcher] Navigating to: ${searchUrl}`);
 
-      await page.goto(searchUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000,
-      });
+      try {
+        await page.goto('https://www.linkedin.com/jobs/', {
+          waitUntil: 'domcontentloaded',
+          timeout: 90000,
+        });
+        await this._randomDelay(3000, 5000);
+
+        await page.goto(searchUrl, {
+          waitUntil: 'domcontentloaded',
+          timeout: 90000,
+        });
+      } catch (err) {
+        console.log(`[Searcher] Navigation failed. Current URL: ${page.url()}`);
+        throw err;
+      }
 
       try {
         await page.waitForSelector('.jobs-search-results-list, .scaffold-layout__list', {

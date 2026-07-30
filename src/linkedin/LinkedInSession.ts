@@ -29,6 +29,8 @@ export class LinkedInSession {
         '--disable-blink-features=AutomationControlled',
         '--disable-gpu',
         '--disable-dev-shm-usage',
+        '--no-zygote',
+        '--single-process',
         '--disable-extensions',
         '--disable-background-networking',
         '--disable-background-timer-throttling',
@@ -61,8 +63,8 @@ export class LinkedInSession {
     this.browser = await puppeteer.launch(launchOptions);
 
     this.page = await this.browser.newPage();
-    await this.page.setDefaultNavigationTimeout(60000);
-    await this.page.setDefaultTimeout(30000);
+    await this.page.setDefaultNavigationTimeout(120000);
+    await this.page.setDefaultTimeout(120000);
     await this.page.setViewport({ width: viewportWidth, height: viewportHeight });
 
     await this.page.setUserAgent(
@@ -277,7 +279,7 @@ export class LinkedInSession {
       try {
         await this.page!.goto(url, {
           waitUntil: 'domcontentloaded',
-          timeout: 30000,
+          timeout: 90000,
         });
         await this._randomDelay(1000, 2000);
         return;

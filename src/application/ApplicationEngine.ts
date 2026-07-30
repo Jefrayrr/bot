@@ -141,7 +141,7 @@ export class ApplicationEngine {
       // === STEP 0: Reset page state to avoid rate-limit ===
       console.log(`  → Resetting page state...`);
       try {
-        await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 90000 });
         console.log(`  → Feed loaded, URL: ${page.url()}`);
         await sleep(3000 + Math.random() * 2000);
       } catch (e: any) {
@@ -151,10 +151,10 @@ export class ApplicationEngine {
       // === STEP 1: Open job page ===
       console.log(`  → Opening job page...`);
       try {
-        await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 90000 });
       } catch (e: any) {
         console.log(`  → Navigation failed (${e.message}), trying reload...`);
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 }).catch(() => {});
       }
       console.log(`  → URL: ${page.url()}`);
 
