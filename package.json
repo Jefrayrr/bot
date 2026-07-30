@@ -13,8 +13,9 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@sparticuz/chromium": "^149.0.0",
     "dotenv": "^16.4.7",
-    "puppeteer": "^24.43.1",
+    "puppeteer-core": "^24.43.1",
     "ws": "^8.16.0"
   },
   "devDependencies": {
@@ -24,7 +25,8 @@
     "typescript": "^5.7.0"
   },
   "allowScripts": {
-    "puppeteer@24.43.1": true,
+    "puppeteer-core@24.43.1": true,
+    "@sparticuz/chromium@149.0.0": true,
     "esbuild@0.28.1": true
   }
 }

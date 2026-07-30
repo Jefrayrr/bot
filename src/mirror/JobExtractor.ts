@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { JobViewData, SkillMatch } from './types.js';
 import { eventBus } from './EventBus.js';
 

@@ -1,4 +1,5 @@
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer, { Browser, Page } from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import path from 'path';
 import fs from 'fs/promises';
 import { setTimeout as sleep } from 'timers/promises';
@@ -32,6 +33,9 @@ export class LinkedInSession {
     const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     if (executablePath) {
       (launchOptions as any).executablePath = executablePath;
+    } else {
+      (launchOptions as any).executablePath = await chromium.executablePath();
+      (launchOptions as any).args.push('--disable-gpu', '--disable-dev-shm-usage');
     }
 
     this.browser = await puppeteer.launch(launchOptions);

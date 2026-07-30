@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import fs from 'fs';
 import path from 'path';
 import { LinkedInSession } from './LinkedInSession.js';

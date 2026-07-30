@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { setTimeout as sleep } from 'timers/promises';
 
 export interface DetectionResult {

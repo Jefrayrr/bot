@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { BrowserStateData, BotState } from './types.js';
 import { eventBus } from './EventBus.js';
 

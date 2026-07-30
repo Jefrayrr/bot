@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import path from 'path';
 import fs from 'fs';
 import { setTimeout as sleep } from 'timers/promises';

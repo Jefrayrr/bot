@@ -6,7 +6,7 @@ import { jobExtractor } from './JobExtractor.js';
 import { decisionTracker } from './DecisionTracker.js';
 import { timeline } from './TimelineRecorder.js';
 import { BotWebSocketServer, getDashboardHTML } from './WebSocketServer.js';
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 
 let wsServer: BotWebSocketServer | null = null;
 
