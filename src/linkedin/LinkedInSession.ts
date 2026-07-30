@@ -265,10 +265,6 @@ export class LinkedInSession {
       await fs.mkdir(dir, { recursive: true });
       await fs.writeFile(COOKIE_PATH, cookiesStr, 'utf-8');
       console.log('[LinkedInSession] Cookies saved to file successfully.');
-      // Mostrar cookies en consola para facilitar copiarlas a Render
-      console.log('[LinkedInSession] === COPY BELOW FOR LINKEDIN_COOKIES ENV VAR ===');
-      console.log(cookiesStr);
-      console.log('[LinkedInSession] === END COOKIES ===');
     } catch (err) {
       console.error('[LinkedInSession] Failed to save cookies:', err);
     }

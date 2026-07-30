@@ -90,7 +90,9 @@ export class EasyApplyDetector {
   async detectFromListCard(page: Page): Promise<boolean> {
     try {
       const result = await page.evaluate(() => {
-        const cards = document.querySelectorAll('.job-card-container');
+        const cards = document.querySelectorAll(
+          'li[data-occludable-job-id], li.jobs-search-results__list-item, .job-card-container'
+        );
         for (const card of cards) {
           const badge = card.querySelector('[class*="easy-apply"]');
           if (badge) return true;

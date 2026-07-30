@@ -101,12 +101,28 @@ export class LinkedInJobSearcher {
       }
 
       try {
-        await page.waitForSelector('.jobs-search-results-list, .scaffold-layout__list', {
-          timeout: 20000,
-        });
+        await page.waitForSelector(
+          'li[data-occludable-job-id], li.jobs-search-results__list-item, .job-card-container, .jobs-search-results, .scaffold-layout__list',
+          { timeout: 30000 }
+        );
         console.log('[Searcher] Results container loaded.');
       } catch {
-        console.log('[Searcher] Results container not found. Proceeding anyway.');
+        console.log('[Searcher] Results container not found. Dumping page info...');
+        const pageInfo = await page.evaluate(() => {
+          return {
+            url: window.location.href,
+            title: document.title,
+            bodyClass: document.body.className.substring(0, 300),
+            mainContent: document.querySelector('main')?.innerHTML?.substring(0, 500) || 'no main',
+            allLists: [...document.querySelectorAll('ul')].map(ul => ({
+              class: ul.className,
+              childCount: ul.children.length,
+            })).slice(0, 5),
+            liWithJobId: document.querySelectorAll('li[data-occludable-job-id]').length,
+            liWithJobsClass: document.querySelectorAll('li[class*="jobs-search"]').length,
+          };
+        });
+        console.log('[Searcher] Page info:', JSON.stringify(pageInfo, null, 2));
       }
 
       await this._randomDelay(2000, 3000);
@@ -235,15 +251,22 @@ export class LinkedInJobSearcher {
         return panel ? panel.textContent?.trim().length || 0 : 0;
       });
 
-      // Click the card by data-job-id
+      // Click the card
       const clicked = await page.evaluate((jobId) => {
         const card = document.querySelector<HTMLElement>(
-          `.job-card-container[data-job-id="${jobId}"]`
+          `li[data-occludable-job-id="${jobId}"], .job-card-container[data-job-id="${jobId}"], [data-occludable-job-id="${jobId}"]`
         );
-        if (!card) return false;
-        card.click();
-        card.scrollIntoView({ behavior: 'instant', block: 'nearest' });
-        return true;
+        if (card) {
+          card.click();
+          card.scrollIntoView({ behavior: 'instant', block: 'nearest' });
+          return true;
+        }
+        const link = document.querySelector<HTMLAnchorElement>(`a[href*="/jobs/view/${jobId}"]`);
+        if (link) {
+          link.click();
+          return true;
+        }
+        return false;
       }, job.id);
 
       if (!clicked) {

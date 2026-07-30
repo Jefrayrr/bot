@@ -34,7 +34,9 @@ export class JobExtractor {
   async extractFromList(page: Page): Promise<ExtractFromListResult> {
     try {
       const result = await page.evaluate(() => {
-        const allCards = document.querySelectorAll('.job-card-container');
+        const allCards = document.querySelectorAll(
+          'li[data-occludable-job-id], li.jobs-search-results__list-item, .job-card-container, [class*="jobs-search-results__list-item"]'
+        );
         const seenKeys = new Set<string>();
         const jobs: any[] = [];
         let invalid = 0;
@@ -45,7 +47,7 @@ export class JobExtractor {
 
           // --- URL ---
           const link = el.querySelector<HTMLAnchorElement>(
-            'a[href*="/jobs/view/"], a.job-card-list__title, a.job-card-container__link'
+            'a[href*="/jobs/view/"], a.job-card-list__title, a.job-card-container__link, a.artdeco-entity-lockup__title-link'
           );
           const fallbackLink = el.querySelector<HTMLAnchorElement>('a');
           const anchor = link || fallbackLink;
@@ -58,11 +60,14 @@ export class JobExtractor {
 
           // --- Title ---
           const titleEl =
+            el.querySelector('.artdeco-entity-lockup__headline') ||
+            el.querySelector('.artdeco-entity-lockup__title') ||
             el.querySelector('.job-card-list__title') ||
             el.querySelector('.job-card-container__link') ||
-            el.querySelector('.job-card-list__title--link') ||
             el.querySelector('[class*="job-title"]') ||
-            el.querySelector('[class*="job-card"] h3, [class*="job-card"] strong') ||
+            el.querySelector('[class*="entity-lockup"] h3') ||
+            el.querySelector('h3') ||
+            el.querySelector('h2') ||
             anchor;
           const title = titleEl?.textContent?.trim() || anchor?.getAttribute('aria-label') || '';
           if (!title) { invalid++; continue; }
@@ -70,10 +75,10 @@ export class JobExtractor {
           // --- Company ---
           const companyEl =
             el.querySelector('.artdeco-entity-lockup__subtitle span') ||
+            el.querySelector('.artdeco-entity-lockup__subtitle') ||
             el.querySelector('[class*="entity-lockup__subtitle"] span') ||
             el.querySelector('[class*="subtitle"] span') ||
             el.querySelector('.job-card-container__company-name') ||
-            el.querySelector('.job-card-list__company-name') ||
             el.querySelector('[class*="company-name"]') ||
             el.querySelector('[class*="company"]');
           const company = companyEl?.textContent?.trim() || '';
@@ -86,10 +91,9 @@ export class JobExtractor {
 
           // --- Location ---
           const locationEl =
+            el.querySelector('.artdeco-entity-lockup__caption') ||
             el.querySelector('.job-card-container__metadata-wrapper li span') ||
             el.querySelector('[class*="metadata-wrapper"] li span') ||
-            el.querySelector('.job-card-container__metadata-item') ||
-            el.querySelector('.job-card-list__metadata-item') ||
             el.querySelector('[class*="metadata-item"]') ||
             el.querySelector('[class*="location"]');
           const location = locationEl?.textContent?.trim() || '';
@@ -107,6 +111,7 @@ export class JobExtractor {
           // --- Job ID ---
           const jobId =
             el.dataset?.jobId ||
+            el.getAttribute('data-occludable-job-id') ||
             el.getAttribute('data-entity-urn')?.split(':').pop() ||
             url.split('/').pop()?.split('?')[0] ||
             '';

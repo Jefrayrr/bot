@@ -119,13 +119,15 @@ export class PaginationManager {
   private async _countCards(page: Page): Promise<number> {
     try {
       return await page.evaluate(() => {
-        const cards = document.querySelectorAll('.job-card-container');
+        const cards = document.querySelectorAll(
+          'li[data-occludable-job-id], li.jobs-search-results__list-item, .job-card-container, [class*="jobs-search-results__list-item"]'
+        );
         let valid = 0;
         for (const card of cards) {
           const link = card.querySelector('a[href*="/jobs/view/"]');
           if (!link) continue;
           const title = card.querySelector(
-            '.job-card-list__title, .job-card-container__link, [class*="job-title"]'
+            '.artdeco-entity-lockup__headline, .artdeco-entity-lockup__title, .job-card-list__title, .job-card-container__link, h3'
           )?.textContent?.trim();
           if (!title) continue;
           valid++;
