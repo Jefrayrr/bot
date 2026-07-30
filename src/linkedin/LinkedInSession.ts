@@ -27,6 +27,27 @@ export class LinkedInSession {
         '--disable-infobars',
         '--window-size=1366,768',
         '--disable-blink-features=AutomationControlled',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-breakpad',
+        '--disable-client-side-phishing-detection',
+        '--disable-component-update',
+        '--disable-default-apps',
+        '--disable-domain-reliability',
+        '--disable-features=TranslateUI',
+        '--disable-hang-monitor',
+        '--disable-ipc-flooding-protection',
+        '--disable-popup-blocking',
+        '--disable-prompt-on-repost',
+        '--disable-renderer-backgrounding',
+        '--disable-sync',
+        '--metrics-recording-only',
+        '--no-first-run',
+        '--safebrowsing-disable-auto-update',
       ],
     };
 
@@ -35,7 +56,6 @@ export class LinkedInSession {
       (launchOptions as any).executablePath = executablePath;
     } else {
       (launchOptions as any).executablePath = await chromium.executablePath();
-      (launchOptions as any).args.push('--disable-gpu', '--disable-dev-shm-usage');
     }
 
     this.browser = await puppeteer.launch(launchOptions);
@@ -124,7 +144,7 @@ export class LinkedInSession {
     console.log('[LinkedInSession] Navigating to LinkedIn feed to verify session...');
     try {
       await this.page!.goto('https://www.linkedin.com/feed/', {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
     } catch (err) {
