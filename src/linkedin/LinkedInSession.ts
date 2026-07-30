@@ -172,26 +172,26 @@ export class LinkedInSession {
       console.log(`[LinkedInSession] Checking login - URL: ${url}`);
       if (url.includes('login') || url.includes('checkpoint')) return false;
 
-      const checks = await this.page!.evaluate(() => {
-        const bools: Record<string, boolean> = {};
-        bools['feed-context'] = !!document.querySelector('div[data-feed-context]');
-        bools['nav-photo'] = !!document.querySelector('.global-nav__me-photo');
-        bools['nav-item'] = !!document.querySelector('.global-nav__me');
-        bools['feed-layout'] = !!document.querySelector('.feed-identity-module');
-        bools['scaffold'] = !!document.querySelector('.scaffold-layout');
-        bools['authwall'] = !!document.querySelector('.authwall');
-        bools['login-form'] = !!document.querySelector('#login-email');
-        const bodyClass = document.body.className.substring(0, 200);
-        const title = document.title;
-        return { bools, bodyClass, title };
+      const info = await this.page!.evaluate(() => {
+        return {
+          title: document.title,
+          url: window.location.href,
+          hasNav: !!document.querySelector('nav, [data-testid="global-nav"], [role="navigation"]'),
+          hasFeed: document.title.toLowerCase().includes('feed'),
+          bodyText: document.body?.innerText?.substring(0, 200) || '',
+        };
       });
 
-      console.log('[LinkedInSession] Login checks:', JSON.stringify(checks.bools));
-      console.log(`[LinkedInSession] Page title: ${checks.title}`);
-      console.log(`[LinkedInSession] Body class: ${checks.bodyClass}`);
+      console.log(`[LinkedInSession] Page title: ${info.title}`);
+      console.log(`[LinkedInSession] Has nav: ${info.hasNav}, Has feed in title: ${info.hasFeed}`);
 
-      if (checks.bools['authwall'] || checks.bools['login-form']) return false;
-      if (checks.bools['feed-context'] || checks.bools['nav-photo'] || checks.bools['nav-item'] || checks.bools['feed-layout'] || checks.bools['scaffold']) return true;
+      if (info.title.toLowerCase().includes('feed') || info.hasNav) {
+        return true;
+      }
+
+      if (info.bodyText.includes('Sign in') || info.bodyText.includes('Iniciar sesión')) {
+        return false;
+      }
 
       return false;
     } catch {
