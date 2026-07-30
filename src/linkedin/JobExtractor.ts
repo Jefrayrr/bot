@@ -177,7 +177,7 @@ export class JobExtractor {
         fs.mkdirSync(detailDir, { recursive: true });
       }
 
-      await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.goto(job.url, { timeout: 90000 });
       await this._randomDelay(2000, 3000);
 
       // Wait for the job description to actually appear in the DOM (loaded via XHR).

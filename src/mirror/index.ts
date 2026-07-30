@@ -16,6 +16,12 @@ export function initMirror(page: Page, port?: number): void {
   formExtractor.setPage(page);
   jobExtractor.setPage(page);
 
+  const disableWs = process.env.DISABLE_WS === 'true';
+  if (disableWs) {
+    console.log('[Mirror] WebSocket disabled (DISABLE_WS=true)');
+    return;
+  }
+
   wsServer = new BotWebSocketServer(port);
   wsServer.start();
 

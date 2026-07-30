@@ -146,9 +146,9 @@ export class LinkedInSession {
     console.log('[LinkedInSession] Navigating to LinkedIn feed to verify session...');
     try {
       await this.page!.goto('https://www.linkedin.com/feed/', {
-        waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
+      await new Promise(r => setTimeout(r, 5000));
     } catch (err) {
       console.log('[LinkedInSession] Failed to navigate to feed:', err instanceof Error ? err.message : err);
       return;
@@ -278,7 +278,6 @@ export class LinkedInSession {
     for (let i = 0; i < retries; i++) {
       try {
         await this.page!.goto(url, {
-          waitUntil: 'domcontentloaded',
           timeout: 90000,
         });
         await this._randomDelay(1000, 2000);
