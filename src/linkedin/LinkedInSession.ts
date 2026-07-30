@@ -111,9 +111,9 @@ export class LinkedInSession {
       const cookies = JSON.parse(cookiesJson);
       if (cookies.length > 0) {
         await this.page!.setCookie(...cookies);
-        console.log('[LinkedInSession] Cookies restored successfully.');
+        console.log(`[LinkedInSession] ${cookies.length} cookies restored.`);
       } else {
-        console.log('[LinkedInSession] Cookies file is empty.');
+        console.log('[LinkedInSession] Cookies data is empty.');
         return;
       }
     } catch {
@@ -121,15 +121,25 @@ export class LinkedInSession {
       return;
     }
 
-    await this._navigateWithRetry('https://www.linkedin.com/feed/', 2);
+    console.log('[LinkedInSession] Navigating to LinkedIn feed to verify session...');
+    try {
+      await this._navigateWithRetry('https://www.linkedin.com/feed/', 2);
+    } catch (err) {
+      console.log('[LinkedInSession] Failed to navigate to feed:', err instanceof Error ? err.message : err);
+      return;
+    }
+
+    const currentUrl = this.page!.url();
+    console.log(`[LinkedInSession] Current URL after navigation: ${currentUrl}`);
+
     await sleep(3000);
 
     const isLoggedIn = await this._checkLoggedIn();
     if (isLoggedIn) {
       this.loggedIn = true;
-      console.log('[LinkedInSession] Session restored successfully.');
+      console.log('[LinkedInSession] ✓ Session valid! Cookies accepted.');
     } else {
-      console.log('[LinkedInSession] Session expired, re-login required.');
+      console.log('[LinkedInSession] ✗ Session invalid. Cookies expired or rejected by LinkedIn.');
     }
   }
 
