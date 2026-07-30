@@ -83,15 +83,41 @@ export class LinkedInSession {
   }
 
   private async _tryRestoreSession(): Promise<void> {
+    let cookiesJson: string | null = null;
+
+    // 1. Intentar leer de env var LINKEDIN_COOKIES (para Render)
+    const envCookies = process.env.LINKEDIN_COOKIES;
+    if (envCookies) {
+      try {
+        cookiesJson = envCookies;
+        console.log('[LinkedInSession] Cookies found in LINKEDIN_COOKIES env var.');
+      } catch {
+        console.log('[LinkedInSession] LINKEDIN_COOKIES env var found but invalid.');
+      }
+    }
+
+    // 2. Si no hay env var, intentar leer del archivo (para local)
+    if (!cookiesJson) {
+      try {
+        cookiesJson = await fs.readFile(COOKIE_PATH, 'utf-8');
+        console.log('[LinkedInSession] Cookies found in file.');
+      } catch {
+        console.log('[LinkedInSession] No saved cookies found.');
+        return;
+      }
+    }
+
     try {
-      const cookiesJson = await fs.readFile(COOKIE_PATH, 'utf-8');
       const cookies = JSON.parse(cookiesJson);
       if (cookies.length > 0) {
         await this.page!.setCookie(...cookies);
-        console.log('[LinkedInSession] Cookies restored from file.');
+        console.log('[LinkedInSession] Cookies restored successfully.');
+      } else {
+        console.log('[LinkedInSession] Cookies file is empty.');
+        return;
       }
     } catch {
-      console.log('[LinkedInSession] No saved cookies found.');
+      console.log('[LinkedInSession] Failed to parse cookies JSON.');
       return;
     }
 
@@ -125,25 +151,28 @@ export class LinkedInSession {
   }
 
   private async _manualLogin(): Promise<void> {
-    console.log('[LinkedInSession] Please log in manually in the browser window.');
-    console.log('[LinkedInSession] You have 120 seconds to complete the login.');
-
-    await this._navigateWithRetry('https://www.linkedin.com/login', 2);
-
     const email = process.env.LINKEDIN_EMAIL;
     const password = process.env.LINKEDIN_PASSWORD;
 
-    if (email && password) {
-      try {
-        await this.page!.type('#username', email, { delay: 80 + Math.random() * 40 });
-        await sleep(500 + Math.random() * 500);
-        await this.page!.type('#password', password, { delay: 60 + Math.random() * 30 });
-        await sleep(300 + Math.random() * 300);
-        await this.page!.click('[type="submit"]');
-        console.log('[LinkedInSession] Credentials submitted. Waiting for redirect...');
-      } catch (err) {
-        console.log('[LinkedInSession] Auto-login failed, falling back to manual login.');
-      }
+    if (!email || !password) {
+      throw new Error(
+        '[LinkedInSession] No credentials (LINKEDIN_EMAIL/LINKEDIN_PASSWORD) and no cookies available. ' +
+        'Run the bot locally first, log in manually, then copy the cookies to LINKEDIN_COOKIES env var on Render.'
+      );
+    }
+
+    console.log('[LinkedInSession] Attempting auto-login with credentials...');
+    await this._navigateWithRetry('https://www.linkedin.com/login', 2);
+
+    try {
+      await this.page!.type('#username', email, { delay: 80 + Math.random() * 40 });
+      await sleep(500 + Math.random() * 500);
+      await this.page!.type('#password', password, { delay: 60 + Math.random() * 30 });
+      await sleep(300 + Math.random() * 300);
+      await this.page!.click('[type="submit"]');
+      console.log('[LinkedInSession] Credentials submitted. Waiting for redirect...');
+    } catch (err) {
+      console.log('[LinkedInSession] Auto-login failed, falling back to manual login.');
     }
 
     const waitTime = 120000;
@@ -180,10 +209,15 @@ export class LinkedInSession {
   private async _saveCookies(): Promise<void> {
     try {
       const cookies = await this.page!.cookies();
+      const cookiesStr = JSON.stringify(cookies, null, 2);
       const dir = path.dirname(COOKIE_PATH);
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(COOKIE_PATH, JSON.stringify(cookies, null, 2), 'utf-8');
-      console.log('[LinkedInSession] Cookies saved successfully.');
+      await fs.writeFile(COOKIE_PATH, cookiesStr, 'utf-8');
+      console.log('[LinkedInSession] Cookies saved to file successfully.');
+      // Mostrar cookies en consola para facilitar copiarlas a Render
+      console.log('[LinkedInSession] === COPY BELOW FOR LINKEDIN_COOKIES ENV VAR ===');
+      console.log(cookiesStr);
+      console.log('[LinkedInSession] === END COOKIES ===');
     } catch (err) {
       console.error('[LinkedInSession] Failed to save cookies:', err);
     }

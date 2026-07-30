@@ -32,6 +32,9 @@ function startHealthCheckServer(): void {
     if (req.url === '/' || req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ status: 'ok', service: 'linkedin-bot-worker' }));
+    } else if (req.url === '/favicon.ico') {
+      res.writeHead(204);
+      res.end();
     } else {
       res.writeHead(404);
       res.end();
