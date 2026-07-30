@@ -123,7 +123,10 @@ export class LinkedInSession {
 
     console.log('[LinkedInSession] Navigating to LinkedIn feed to verify session...');
     try {
-      await this._navigateWithRetry('https://www.linkedin.com/feed/', 2);
+      await this.page!.goto('https://www.linkedin.com/feed/', {
+        waitUntil: 'networkidle2',
+        timeout: 60000,
+      });
     } catch (err) {
       console.log('[LinkedInSession] Failed to navigate to feed:', err instanceof Error ? err.message : err);
       return;
@@ -132,7 +135,7 @@ export class LinkedInSession {
     const currentUrl = this.page!.url();
     console.log(`[LinkedInSession] Current URL after navigation: ${currentUrl}`);
 
-    await sleep(3000);
+    await sleep(5000);
 
     const isLoggedIn = await this._checkLoggedIn();
     if (isLoggedIn) {
@@ -146,13 +149,29 @@ export class LinkedInSession {
   private async _checkLoggedIn(): Promise<boolean> {
     try {
       const url = this.page!.url();
+      console.log(`[LinkedInSession] Checking login - URL: ${url}`);
       if (url.includes('login') || url.includes('checkpoint')) return false;
 
-      const feedIndicator = await this.page!.$('div[data-feed-context]');
-      if (feedIndicator) return true;
+      const checks = await this.page!.evaluate(() => {
+        const bools: Record<string, boolean> = {};
+        bools['feed-context'] = !!document.querySelector('div[data-feed-context]');
+        bools['nav-photo'] = !!document.querySelector('.global-nav__me-photo');
+        bools['nav-item'] = !!document.querySelector('.global-nav__me');
+        bools['feed-layout'] = !!document.querySelector('.feed-identity-module');
+        bools['scaffold'] = !!document.querySelector('.scaffold-layout');
+        bools['authwall'] = !!document.querySelector('.authwall');
+        bools['login-form'] = !!document.querySelector('#login-email');
+        const bodyClass = document.body.className.substring(0, 200);
+        const title = document.title;
+        return { bools, bodyClass, title };
+      });
 
-      const navProfile = await this.page!.$('.global-nav__me-photo');
-      if (navProfile) return true;
+      console.log('[LinkedInSession] Login checks:', JSON.stringify(checks.bools));
+      console.log(`[LinkedInSession] Page title: ${checks.title}`);
+      console.log(`[LinkedInSession] Body class: ${checks.bodyClass}`);
+
+      if (checks.bools['authwall'] || checks.bools['login-form']) return false;
+      if (checks.bools['feed-context'] || checks.bools['nav-photo'] || checks.bools['nav-item'] || checks.bools['feed-layout'] || checks.bools['scaffold']) return true;
 
       return false;
     } catch {
